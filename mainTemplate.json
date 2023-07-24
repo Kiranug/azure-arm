@@ -137,10 +137,22 @@
             },
             "adminPassword": {
               "value": "[parameters('adminPassword')]"
+            },
+            "hubVNetName": {
+              "value": "[parameters('hubVNetName')]"
+            },
+            "hubSubnetName": {
+              "value": "[parameters('hubSubnetName')]"
+            },
+            "spokeVNetNames": {
+              "value": "[parameters('spokeVNetNames')]"
+            },
+            "spokeSubnetNames": {
+              "value": "[parameters('spokeSubnetNames')]"
             }
           },
           "templateLink": {
-            "uri": "./vmTemplate.json",
+            "uri": "https://raw.githubusercontent.com/Kiranug/azure-arm/main/vmTemplate.json",
             "contentVersion": "1.0.0.0"
           }
         }

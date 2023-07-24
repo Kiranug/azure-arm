@@ -1,0 +1,151 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+      "location": {
+        "type": "string",
+        "defaultValue": "East US",
+        "metadata": {
+          "description": "Location for all resources."
+        }
+      },
+      "adminUsername": {
+        "type": "string",
+        "metadata": {
+          "description": "Username for the virtual machines."
+        }
+      },
+      "adminPassword": {
+        "type": "securestring",
+        "metadata": {
+          "description": "Password for the virtual machines."
+        }
+      },
+      "hubVNetName": {
+        "type": "string",
+        "defaultValue": "HubVNet",
+        "metadata": {
+          "description": "Name of the hub virtual network."
+        }
+      },
+      "hubSubnetName": {
+        "type": "string",
+        "defaultValue": "HubSubnet",
+        "metadata": {
+          "description": "Name of the hub subnet."
+        }
+      },
+      "spokeVNetNames": {
+        "type": "array",
+        "defaultValue": [
+          "SpokeVNet1",
+          "SpokeVNet2",
+          "SpokeVNet3"
+        ],
+        "metadata": {
+          "description": "Names of the spoke virtual networks."
+        }
+      },
+      "spokeSubnetNames": {
+        "type": "array",
+        "defaultValue": [
+          "SpokeSubnet1",
+          "SpokeSubnet2",
+          "SpokeSubnet3"
+        ],
+        "metadata": {
+          "description": "Names of the spoke subnets."
+        }
+      }
+    },
+    "variables": {
+      "addressPrefixHub": "10.0.0.0/16",
+      "subnetPrefixHub": "10.0.0.0/24"
+    },
+    "resources": [
+      {
+        "type": "Microsoft.Network/virtualNetworks",
+        "apiVersion": "2020-11-01",
+        "name": "[parameters('hubVNetName')]",
+        "location": "[parameters('location')]",
+        "properties": {
+          "addressSpace": {
+            "addressPrefixes": [
+              "[variables('addressPrefixHub')]"
+            ]
+          }
+        },
+        "resources": [
+          {
+            "name": "[parameters('hubSubnetName')]",
+            "type": "subnets",
+            "apiVersion": "2020-11-01",
+            "dependsOn": [
+              "[resourceId('Microsoft.Network/virtualNetworks', parameters('hubVNetName'))]"
+            ],
+            "properties": {
+              "addressPrefix": "[variables('subnetPrefixHub')]"
+            }
+          }
+        ]
+      },
+      {
+        "type": "Microsoft.Network/virtualNetworks",
+        "apiVersion": "2020-11-01",
+        "name": "[parameters('spokeVNetNames')[copyIndex()]]",
+        "location": "[parameters('location')]",
+        "copy": {
+          "name": "spokeCopy",
+          "count": "[length(parameters('spokeVNetNames'))]"
+        },
+        "properties": {
+          "addressSpace": {
+            "addressPrefixes": [
+              "[concat('10.', add(copyIndex(), 1), '.0.0/16')]"
+            ]
+          }
+        },
+        "resources": [
+          {
+            "name": "[parameters('spokeSubnetNames')[copyIndex()]]",
+            "type": "subnets",
+            "apiVersion": "2020-11-01",
+            "dependsOn": [
+              "[resourceId('Microsoft.Network/virtualNetworks', parameters('spokeVNetNames')[copyIndex()])]"
+            ],
+            "properties": {
+              "addressPrefix": "[concat('10.', add(copyIndex(), 1), '.0.0/24')]"
+            }
+          }
+        ]
+      },
+      {
+        "type": "Microsoft.Resources/deployments",
+        "apiVersion": "2021-04-01",
+        "name": "linkedTemplateDeployment",
+        "properties": {
+          "mode": "Incremental",
+          "expressionEvaluationOptions": {
+            "scope": "outer"
+          },
+          "parameters": {
+            "location": {
+              "value": "[parameters('location')]"
+            },
+            "adminUsername": {
+              "value": "[parameters('adminUsername')]"
+            },
+            "adminPassword": {
+              "value": "[parameters('adminPassword')]"
+            }
+          },
+          "templateLink": {
+            "uri": "./vmTemplate.json",
+            "contentVersion": "1.0.0.0"
+          }
+        }
+      }
+    ],
+    "outputs": {}
+  }
+  

@@ -1,0 +1,28 @@
+{
+    "parameters": {
+      "location": {
+        "value": "East US"
+      },
+      "hubVNetName": {
+        "value": "HubVNet"
+      },
+      "hubSubnetName": {
+        "value": "HubSubnet"
+      },
+      "spokeVNetNames": {
+        "value": [
+          "SpokeVNet1",
+          "SpokeVNet2",
+          "SpokeVNet3"
+        ]
+      },
+      "spokeSubnetNames": {
+        "value": [
+          "SpokeSubnet1",
+          "SpokeSubnet2",
+          "SpokeSubnet3"
+        ]
+      }
+    }
+  }
+  

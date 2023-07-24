@@ -1,87 +1,86 @@
 {
     "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
     "contentVersion": "1.0.0.0",
-    "parameters": {
-      "location": {
-        "type": "string",
-        "metadata": {
-          "description": "Location for all resources."
-        }
-      },
-      "adminUsername": {
-        "type": "string",
-        "metadata": {
-          "description": "Username for the virtual machines."
-        }
-      },
-      "adminPassword": {
-        "type": "securestring",
-        "metadata": {
-          "description": "Password for the virtual machines."
-        }
-      },
-      "spokeVNet1ID": {
-        "type": "string",
-        "metadata": {
-          "description": "Resource ID of SpokeVNet1."
-        }
-      },
-      "spokeVNet2ID": {
-        "type": "string",
-        "metadata": {
-          "description": "Resource ID of SpokeVNet2."
-        }
-      },
-      "spokeVNet3ID": {
-        "type": "string",
-        "metadata": {
-          "description": "Resource ID of SpokeVNet3."
-        }
-      }
+    "variables": {
+      "nsgId": "[resourceId('Microsoft.Network/networkSecurityGroups', 'NSG')]",
+      "vmNamePrefix": "[concat(variables('spokeVmPrefix'), copyIndex())]",
+      "subnetId": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('spokeVNetNames')[copyIndex()], 'SpokeSubnet')]"
     },
     "resources": [
       {
+        "apiVersion": "2022-03-01",
         "type": "Microsoft.Compute/virtualMachines",
-        "apiVersion": "2020-12-01",
-        "name": "VM1InSpokeVNet1",
-        "location": "[parameters('location')]",
-        "dependsOn": [
-          "[parameters('spokeVNet1ID')]"
-        ],
+        "name": "[format('{0}{1}', variables('vmNamePrefix'), copyIndex())]",
+        "location": "[resourceGroup().location]",
+        "copy": {
+          "name": "virtualMachineLoop",
+          "count": "[variables('vmCount')]"
+        },
         "properties": {
           "hardwareProfile": {
-            "vmSize": "Standard_DS1_v2"
-          },
-          "osProfile": {
-            "computerName": "VM1InSpokeVNet1",
-            "adminUsername": "[parameters('adminUsername')]",
-            "adminPassword": "[parameters('adminPassword')]"
+            "vmSize": "[variables('vmSize')]"
           },
           "storageProfile": {
-            "imageReference": {
-              "publisher": "MicrosoftWindowsServer",
-              "offer": "WindowsServer",
-              "sku": "2019-Datacenter",
-              "version": "latest"
-            },
             "osDisk": {
-              "name": "osdisk",
               "createOption": "FromImage",
               "caching": "ReadWrite",
               "managedDisk": {
                 "storageAccountType": "Standard_LRS"
               }
             },
-            "dataDisks": []
+            "imageReference": {
+              "publisher": "MicrosoftWindowsServer",
+              "offer": "WindowsServer",
+              "sku": "[variables('windowsOSVersion')]",
+              "version": "latest"
+            }
+          },
+          "osProfile": {
+            "computerName": "[format('{0}{1}', variables('vmNamePrefix'), copyIndex())]",
+            "adminUsername": "[variables('vmAdminUsername')]",
+            "adminPassword": "[variables('vmAdminPassword')]"
           },
           "networkProfile": {
             "networkInterfaces": [
               {
-                "id": "[resourceId('Microsoft.Network/networkInterfaces', 'VM1NICInSpokeVNet1')]"
+                "id": "[format('{0}{1}-nic', variables('vmNamePrefix'), copyIndex())]"
               }
             ]
           }
         }
+      },
+      {
+        "apiVersion": "2022-03-01",
+        "type": "Microsoft.Network/networkInterfaces",
+        "name": "[format('{0}{1}-nic', variables('vmNamePrefix'), copyIndex())]",
+        "location": "[resourceGroup().location]",
+        "copy": {
+          "name": "nicLoop",
+          "count": "[variables('vmCount')]"
+        },
+        "properties": {
+          "ipConfigurations": [
+            {
+              "name": "ipconfig1",
+              "properties": {
+                "privateIPAllocationMethod": "Dynamic",
+                "subnet": {
+                  "id": "[variables('subnetId')]"
+                }
+              }
+            }
+          ],
+          "networkSecurityGroup": {
+            "id": "[variables('nsgId')]"
+          }
+        }
       }
-    ]
+    ],
+    "outputs": {
+      "vmNames": {
+        "type": "array",
+        "value": "[reference(concat(variables('vmNamePrefix'), copyIndex(), '/networkInterfaces/ipconfig1')).ipConfigurations[0].properties.privateIPAddress]"
+      }
+    }
   }
+  
